@@ -5,8 +5,11 @@ use anchor_lang::prelude::*;
 
 mod instructions;
 mod state;
+mod error;
 
-use instructions::*;
+pub use error::*;
+pub use instructions::*;
+pub use state::*;
 
 use spl_discriminator::SplDiscriminate;
 use spl_transfer_hook_interface::{
@@ -23,16 +26,13 @@ declare_id!("DhzyDgCmmQzVC4vEcj2zRGUyN8Mt5JynfdGLKkBcRGaX");
 pub mod whitelist_transfer_hook {
     use super::*;
 
-    pub fn initialize_whitelist(ctx: Context<InitializeWhitelist>) -> Result<()> {
-        ctx.accounts.initialize_whitelist(ctx.bumps)
+    pub fn whitelist(ctx: Context<WhitelistOperations>, address: Pubkey) -> Result<()> {
+        let bump = ctx.bumps.whitelisted;
+        ctx.accounts.whitelist(address, bump)
     }
 
-    pub fn add_to_whitelist(ctx: Context<WhitelistOperations>, user: Pubkey) -> Result<()> {
-        ctx.accounts.add_to_whitelist(user)
-    }
-
-    pub fn remove_from_whitelist(ctx: Context<WhitelistOperations>, user: Pubkey) -> Result<()> {
-        ctx.accounts.remove_from_whitelist(user)
+    pub fn unwhitelist(ctx: Context<WhitelistOperations>, address: Pubkey) -> Result<()> {
+        ctx.accounts.unwhitelist(address)
     }
 
     pub fn initialize_transfer_hook(ctx: Context<InitializeExtraAccountMetaList>) -> Result<()> {

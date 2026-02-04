@@ -3,81 +3,53 @@ use anchor_lang::{
     system_program
 };
 
-use crate::state::whitelist::Whitelist;
+use crate::WhitelistError;
+use crate::Whitelisted;
 
 #[derive(Accounts)]
+#[instruction(address:Pubkey)]
 pub struct WhitelistOperations<'info> {
-    #[account(
-        mut,
-        //address = 
-    )]
+    #[account(mut)]
     pub admin: Signer<'info>,
     #[account(
-        mut,
-        seeds = [b"whitelist"],
+        init_if_needed,
+        payer = admin,
+        space= 8 + Whitelisted::INIT_SPACE,
+        seeds = [b"whitelisted", address.as_ref()],
         bump,
     )]
-    pub whitelist: Account<'info, Whitelist>,
+    pub whitelisted: Account<'info, Whitelisted>,
     pub system_program: Program<'info, System>,
 }
 
 impl<'info> WhitelistOperations<'info> {
-    pub fn add_to_whitelist(&mut self, address: Pubkey) -> Result<()> {
-        if !self.whitelist.address.contains(&address) {
-            self.realloc_whitelist(true)?;
-            self.whitelist.address.push(address);
+    pub fn whitelist(
+        &mut self, 
+        address: Pubkey,
+        bump: u8
+    ) -> Result<()> {
+        if self.whitelisted.address == address {
+            return err!(WhitelistError::AddressAlreadyWhitelisted);
         }
+
+        self.whitelisted.set_inner(Whitelisted {
+            address,
+            bump,
+        });
+        msg!("Added {} to whitelist", address);
         Ok(())
     }
 
-    pub fn remove_from_whitelist(&mut self, address: Pubkey) -> Result<()> {
-        if let Some(pos) = self.whitelist.address.iter().position(|&x| x == address) {
-            self.whitelist.address.remove(pos);
-            self.realloc_whitelist(false)?;
-        }
-        Ok(())
-    }
-
-    pub fn realloc_whitelist(&self, is_adding: bool) -> Result<()> {
-        // Get the account info for the whitelist
-        let account_info = self.whitelist.to_account_info();
-
-        if is_adding {  // Adding to whitelist
-            let new_account_size = account_info.data_len() + std::mem::size_of::<Pubkey>();
-            // Calculate rent required for the new account size
-            let lamports_required = (Rent::get()?).minimum_balance(new_account_size);
-            // Determine additional rent required
-            let rent_diff = lamports_required - account_info.lamports();
-
-            // Perform transfer of additional rent
-            let cpi_program = self.system_program.to_account_info();
-            let cpi_accounts = system_program::Transfer{
-                from: self.admin.to_account_info(), 
-                to: account_info.clone(),
-            };
-            let cpi_context = CpiContext::new(cpi_program, cpi_accounts);
-            system_program::transfer(cpi_context,rent_diff)?;
-
-            // Reallocate the account
-            account_info.resize(new_account_size)?;
-            msg!("Account Size Updated: {}", account_info.data_len());
-
-        } else {        // Removing from whitelist
-            let new_account_size = account_info.data_len() - std::mem::size_of::<Pubkey>();
-            // Calculate rent required for the new account size
-            let lamports_required = (Rent::get()?).minimum_balance(new_account_size);
-            // Determine additional rent to be refunded
-            let rent_diff = account_info.lamports() - lamports_required;
-
-            // Reallocate the account
-            account_info.resize(new_account_size)?;
-            msg!("Account Size Downgraded: {}", account_info.data_len());
-
-            // Perform transfer to refund additional rent
-            **self.admin.to_account_info().try_borrow_mut_lamports()? += rent_diff;
-            **self.whitelist.to_account_info().try_borrow_mut_lamports()? -= rent_diff;
+    pub fn unwhitelist(
+        &mut self, 
+        address: Pubkey
+    ) -> Result<()> {
+        if self.whitelisted.address != address {
+            return err!(WhitelistError::NotWhitelisted);
         }
 
+        self.whitelisted.close(self.admin.to_account_info())?;
+        msg!("Removed {} from whitelist", address);
         Ok(())
     }
 }

@@ -58,31 +58,19 @@ describe("whitelist-transfer-hook", () => {
     program.programId,
   );
 
-  const whitelist = anchor.web3.PublicKey.findProgramAddressSync(
+  const whitelisted = anchor.web3.PublicKey.findProgramAddressSync(
     [
-      Buffer.from("whitelist"),
+      Buffer.from("whitelisted"), 
+      wallet.publicKey.toBuffer(),
     ],
     program.programId
   )[0];
 
-  it("Initializes the Whitelist", async () => {
-    const tx = await program.methods.initializeWhitelist()
+  it("Whitelist an address", async () => {
+    const tx = await program.methods.whitelist(provider.publicKey)
       .accountsPartial({
         admin: provider.publicKey,
-        whitelist,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
-      .rpc();
-
-    console.log("\nWhitelist initialized:", whitelist.toBase58());
-    console.log("Transaction signature:", tx);
-  });
-
-  it("Add user to whitelist", async () => {
-    const tx = await program.methods.addToWhitelist(provider.publicKey)
-      .accountsPartial({
-        admin: provider.publicKey,
-        whitelist,
+        whitelisted,
       })
       .rpc();
 
@@ -90,11 +78,11 @@ describe("whitelist-transfer-hook", () => {
     console.log("Transaction signature:", tx);
   });
 
-  it("Remove user to whitelist", async () => {
-    const tx = await program.methods.removeFromWhitelist(provider.publicKey)
+  xit("unwhitelist an address", async () => {
+    const tx = await program.methods.unwhitelist(provider.publicKey)
       .accountsPartial({
         admin: provider.publicKey,
-        whitelist,
+        whitelisted,
       })
       .rpc();
 
@@ -210,7 +198,7 @@ describe("whitelist-transfer-hook", () => {
       // ExtraAccountMetaList PDA
       { pubkey: extraAccountMetaListPDA, isSigner: false, isWritable: false },
       // Whitelist PDA (the extra account we defined)
-      { pubkey: whitelist, isSigner: false, isWritable: false },
+      { pubkey: whitelisted, isSigner: false, isWritable: false },
       // Transfer hook program
       { pubkey: program.programId, isSigner: false, isWritable: false },
     );

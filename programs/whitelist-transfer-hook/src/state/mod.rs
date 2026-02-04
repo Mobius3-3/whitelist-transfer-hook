@@ -1,3 +1,3 @@
-pub mod whitelist;
+pub mod whitelisted;
 
-pub use whitelist::*;
+pub use whitelisted::*;
