@@ -1,55 +1,54 @@
-use anchor_lang::{
-    prelude::*, 
-    system_program
-};
+use anchor_lang::prelude::*;
 
-use crate::WhitelistError;
-use crate::Whitelisted;
+use crate::state::whitelisted::Whitelisted;
 
 #[derive(Accounts)]
-#[instruction(address:Pubkey)]
-pub struct WhitelistOperations<'info> {
+#[instruction(address: Pubkey)]
+pub struct Whitelist<'info> {
     #[account(mut)]
     pub admin: Signer<'info>,
     #[account(
-        init_if_needed,
+        init,
         payer = admin,
-        space= 8 + Whitelisted::INIT_SPACE,
-        seeds = [b"whitelisted", address.as_ref()],
+        space = Whitelisted::DISCRIMINATOR.len() + Whitelisted::INIT_SPACE,
+        seeds = [b"whitelisted", address.key().as_ref()],
         bump,
     )]
     pub whitelisted: Account<'info, Whitelisted>,
     pub system_program: Program<'info, System>,
 }
 
-impl<'info> WhitelistOperations<'info> {
+impl<'info> Whitelist<'info> {
     pub fn whitelist(
-        &mut self, 
-        address: Pubkey,
+        &mut self,
+        _address: Pubkey,
         bump: u8
     ) -> Result<()> {
-        if self.whitelisted.address == address {
-            return err!(WhitelistError::AddressAlreadyWhitelisted);
-        }
-
         self.whitelisted.set_inner(Whitelisted {
-            address,
             bump,
         });
-        msg!("Added {} to whitelist", address);
+
         Ok(())
     }
+}
 
-    pub fn unwhitelist(
-        &mut self, 
-        address: Pubkey
-    ) -> Result<()> {
-        if self.whitelisted.address != address {
-            return err!(WhitelistError::NotWhitelisted);
-        }
+#[derive(Accounts)]
+#[instruction(address: Pubkey)]
+pub struct Unwhitelist<'info> {
+    #[account(mut)]
+    pub admin: Signer<'info>,
+    #[account(
+        mut,
+        close = admin,
+        seeds = [b"whitelisted", address.key().as_ref()],
+        bump = whitelisted.bump,
+    )]
+    pub whitelisted: Account<'info, Whitelisted>,
+    pub system_program: Program<'info, System>,
+}
 
-        self.whitelisted.close(self.admin.to_account_info())?;
-        msg!("Removed {} from whitelist", address);
+impl<'info> Unwhitelist<'info> {
+    pub fn unwhitelist(&mut self, _address: Pubkey) -> Result<()> {
         Ok(())
     }
 }

@@ -26,12 +26,16 @@ declare_id!("DhzyDgCmmQzVC4vEcj2zRGUyN8Mt5JynfdGLKkBcRGaX");
 pub mod whitelist_transfer_hook {
     use super::*;
 
-    pub fn whitelist(ctx: Context<WhitelistOperations>, address: Pubkey) -> Result<()> {
+    pub fn init_mint(ctx: Context<TokenFactory>) -> Result<()> {
+        ctx.accounts.init_mint()
+    }
+
+    pub fn whitelist(ctx: Context<Whitelist>, address: Pubkey) -> Result<()> {
         let bump = ctx.bumps.whitelisted;
         ctx.accounts.whitelist(address, bump)
     }
 
-    pub fn unwhitelist(ctx: Context<WhitelistOperations>, address: Pubkey) -> Result<()> {
+    pub fn unwhitelist(ctx: Context<Unwhitelist>, address: Pubkey) -> Result<()> {
         ctx.accounts.unwhitelist(address)
     }
 

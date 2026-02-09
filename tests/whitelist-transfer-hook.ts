@@ -58,13 +58,13 @@ describe("whitelist-transfer-hook", () => {
     program.programId,
   );
 
-  const whitelisted = anchor.web3.PublicKey.findProgramAddressSync(
+  const [whitelisted, whitelistedBump] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       Buffer.from("whitelisted"), 
       wallet.publicKey.toBuffer(),
     ],
     program.programId
-  )[0];
+  );
 
   it("Whitelist an address", async () => {
     const tx = await program.methods.whitelist(provider.publicKey)
@@ -78,7 +78,7 @@ describe("whitelist-transfer-hook", () => {
     console.log("Transaction signature:", tx);
   });
 
-  xit("unwhitelist an address", async () => {
+  xit("Unwhitelist an address", async () => {
     const tx = await program.methods.unwhitelist(provider.publicKey)
       .accountsPartial({
         admin: provider.publicKey,
@@ -90,7 +90,7 @@ describe("whitelist-transfer-hook", () => {
     console.log("Transaction signature:", tx);
   });
 
-  it('Create Mint Account with Transfer Hook Extension', async () => {
+  xit('Create Mint Account with Transfer Hook Extension if Not Created by Program', async () => {
     const extensions = [ExtensionType.TransferHook];
     const mintLen = getMintLen(extensions);
     const lamports = await provider.connection.getMinimumBalanceForRentExemption(mintLen);
@@ -122,6 +122,21 @@ describe("whitelist-transfer-hook", () => {
       commitment: 'confirmed',
     });
     //console.log(txDetails.meta.logMessages);
+
+    console.log("\nTransaction Signature: ", txSig);
+  });
+
+  it("Create the Mint Account in the Program Using the Extensions", async () => {
+    const txSig = await program.methods
+      .initMint()
+      .accountsPartial({
+        user: wallet.publicKey,
+        mint: mint2022.publicKey,
+        extraAccountMetaList: extraAccountMetaListPDA,
+        tokenProgram: TOKEN_2022_PROGRAM_ID,
+      })
+      .signers([mint2022])
+      .rpc();
 
     console.log("\nTransaction Signature: ", txSig);
   });
